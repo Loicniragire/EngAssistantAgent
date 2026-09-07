@@ -6,7 +6,7 @@
 | Status | Draft — matrix complete, detected specification pending |
 | Milestone | M0 — Foundation |
 | Depends on | [001 Vision and Principles](001-Vision-and-Principles.md) |
-| Consumed by | [003 Core Architecture](003-Core-Architecture-Specification.md) §5, 004 Environment Discovery |
+| Consumed by | [003 Core Architecture](003-Core-Architecture-Specification.md) §5, [004 Environment Discovery](004-Environment-Discovery-Specification.md) |
 
 ---
 
@@ -42,8 +42,9 @@ describe the script rather than govern it.
 ### 1.3 Out of scope
 
 The discovery script's implementation, its output format, and its detection methods
-belong to **004 Environment Discovery Specification**. This document specifies *what the
-script must decide*, not *how it detects*.
+belong to [004 Environment Discovery](004-Environment-Discovery-Specification.md). This
+document specifies *what the script must decide*, not *how it detects*. 004 holds no
+thresholds of its own (004 D-201) — every value it compares against is read from here.
 
 ---
 
@@ -287,7 +288,8 @@ Stage 0 emits from this set, filtered by detected state and feasibility:
 
 ## 7. Detected Specification
 
-> **Pending.** Fills once the discovery script (004) exists and runs on the target
+> **Pending.** Fills once the discovery script
+> ([004](004-Environment-Discovery-Specification.md)) exists and runs on the target
 > machine. Until then the profile is undetermined and no install decision is authorised
 > by this document.
 

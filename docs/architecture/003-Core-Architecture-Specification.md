@@ -413,7 +413,7 @@ Numbered `NNN-Kebab-Title`, stable from creation so cross-references never break
 | 001 | [Vision and Principles](001-Vision-and-Principles.md) | M0 | Draft |
 | 002 | [Hardware Assessment](002-Hardware-Assessment.md) | M0 | Draft — matrix complete |
 | 003 | Core Architecture Specification | M1 | **This document** |
-| 004 | Environment Discovery Specification | M1 | Planned |
+| 004 | [Environment Discovery Specification](004-Environment-Discovery-Specification.md) | M1 | Draft |
 | 005 | Orchestrator and Model Routing | M1 | Planned |
 | 006 | Platform Manifest Schema | M1 | Planned |
 | 007 | Memory and Knowledge Design | M1 | Planned |

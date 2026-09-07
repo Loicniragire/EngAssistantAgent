@@ -7,6 +7,8 @@
 | Milestone | M1 — Core Architecture |
 | Depends on | [001 Vision and Principles](001-Vision-and-Principles.md), [002 Hardware Assessment](002-Hardware-Assessment.md), [003 Core Architecture](003-Core-Architecture-Specification.md) §5 |
 | Consumed by | 006 Platform Manifest, bootstrap (reference implementation pillar) |
+| Implementation | `scripts/discover.sh`, `scripts/thresholds.env`, `scripts/stamp-thresholds.sh` |
+| Validation | `validation/test-discovery.sh` (V-01…V-10, 28 checks) |
 
 ---
 
@@ -44,7 +46,13 @@ decides *what may be installed*; it installs nothing.
 
 ```
 discover.sh [--json PATH] [--report PATH] [--privileged] [--benchmark] [--quiet]
+            [--fixture PATH] [--thresholds PATH]
 ```
+
+`--fixture` loads detected facts from a file instead of probing, turning the run into
+evaluation only. It is not a convenience: §9 V-04 and V-10 specify synthetic inputs, and
+below-floor and 128 GB machines cannot otherwise be tested. `--thresholds` overrides the
+data file location, which the validation suite uses to exercise the §2.3 `30` paths.
 
 Invoked as Stage 0 of every bootstrap, upgrade, and component install. No installation
 step may run without a discovery result from the current run.
@@ -75,6 +83,13 @@ platform itself provides.
 `10` and `20` are distinct because they need different responses: `10` is a hardware
 verdict the user can act on, `20` is a tooling problem that says nothing about the
 machine.
+
+**Stamp verification when 002 is absent.** The tool is expected to be deployed to the
+target machine as `scripts/` alone, without the `docs/` tree. With no 002 to hash against,
+it cannot verify the stamp; it records `stamp_state: "unverified"` in the output and
+proceeds. It refuses (`30`) only on a stamp it can check and finds wrong. Silently
+proceeding *without recording* would be the defect — an unverified run must be
+identifiable as one after the fact.
 
 ### 2.4 Privilege model
 
@@ -265,9 +280,9 @@ and by bootstrap.
     "profile": "mid",
     "binding_dimension": "cpu",
     "agent_capacity": 8,
-    "health": { "score": 71, "band": "capable",
-                "dimensions": { "ram": 75, "cpu": 75, "storage": 100,
-                                "gpu": 75, "software": 100, "network": 50 } },
+    "health": { "score": 72, "band": "capable",
+                "dimensions": { "ram": 75, "cpu": 75, "storage": 75,
+                                "gpu": 50, "software": 100, "network": 50 } },
     "features": {
       "enabled":  ["F-01", "F-02", "…"],
       "disabled": [ { "id": "F-10", "failed": "vram_gb",
@@ -325,8 +340,13 @@ the difference between a report and a spec sheet:
 ### 6.2 Reporting rules
 
 - The health score never appears without its derivation (002 §5.4).
-- Every recommendation names its binding dimension and what binds next (002 §6.2), so the
-  report cannot recommend RAM to a core-bound machine without saying so.
+- Every recommendation names **every** dimension currently blocking the next profile, not
+  just the first one found (002 §6.2, D-106). Naming only the first produces exactly the
+  wrong answer the rule forbids: a machine short on both RAM and cores would be told to
+  add RAM, which alone advances nothing.
+- A recommendation's projected capacity is computed for *this* machine. Where the upgrade
+  would not move capacity because another dimension binds, the report says so and the tier
+  drops to `optional`.
 - A recommendation whose feasibility is `unknown` says why — and that `--privileged`
   resolves it.
 
@@ -368,6 +388,8 @@ exists for change detection (§7.1), not as a substitute for running.
 |---|---|
 | `/proc/meminfo` unreadable | Exit `20`. RAM is required; no verdict is possible without it. |
 | `lscpu` absent | Fall back to `/proc/cpuinfo`. Exit `20` only if both fail. |
+| Physical core count undetectable | Exit `20`. Cores gate profile selection and matrix rows; inferring them from thread count assumes SMT and mis-gates a non-SMT machine. |
+| Disk undetectable | Blocks profile advancement and scores 0. An unknown dimension is never waved through (002 D-101), and the profile rule and the health score must agree. |
 | `dmidecode` absent or unprivileged | Slot facts `unknown`; feasibility `unknown`; run continues. |
 | GPU present, no compute runtime | `usable: false`; local-inference features disabled; stated in the report. |
 | Running in a VM or container | Report normally, flagged. Memory may be balloonable and the figure not durable. |
@@ -414,7 +436,8 @@ hold a threshold 002 does not, or to reach a verdict that cannot be re-derived.
 - [x] Manifest read/write boundary defined (§7)
 - [x] Failure modes enumerated (§8)
 - [x] Validation checks defined (§9)
-- [ ] Implementation written and V-01…V-10 passing
+- [x] Implementation written and V-01…V-10 passing (`scripts/discover.sh`,
+      `validation/test-discovery.sh` — 28 checks)
 - [ ] Run on the target machine; 002 §7 populated
 - [ ] Design review checklist passed (pending 009)
 

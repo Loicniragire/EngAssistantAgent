@@ -62,7 +62,7 @@ the machine cannot actually run.
 | `minimal` | < 8 GB | < 4 threads | — | — | **Below platform floor.** Install refused. |
 | `lightweight` | ≥ 8 GB | ≥ 4 cores / 4 threads | none required | ≥ 128 GB SSD | Single-agent, cloud-model-only. No local inference. |
 | `mid` | ≥ 32 GB | ≥ 8 cores / 16 threads | optional | ≥ 512 GB NVMe | Several concurrent agents, local embeddings, full memory and monitoring layers. |
-| `high` | ≥ 64 GB | ≥ 12 cores / 24 threads | ≥ 12 GB VRAM | ≥ 1 TB NVMe | Many concurrent agents plus local coding models on GPU. |
+| `high` | ≥ 64 GB | ≥ 12 cores / 24 threads | scored separately (§2.4) | ≥ 1 TB NVMe | Many concurrent agents plus local coding models on GPU. |
 
 ### 2.2 Platform floor
 
@@ -72,12 +72,27 @@ nothing left to orchestrate, and on 6 GB only a single agent fits with no headro
 build. Stage 0 reports the shortfall and the upgrade required to clear it rather than
 attempting a degraded install.
 
-### 2.3 GPU handling
+### 2.3 Reported vs. nominal memory
 
-GPU is scored independently and never blocks a profile below `high`. A `mid` machine with
-a 16 GB GPU gains local coding models (§3, F-08) without becoming `high` — it lacks the
-RAM and cores to sustain `high`'s agent concurrency. Profile governs breadth;
-GPU governs local inference specifically.
+Thresholds in §2.1 are nominal — "32 GB" means a machine with 32 GB installed. The kernel
+reports less: `MemTotal` excludes firmware and integrated-graphics reservations, so a
+32 GiB machine typically reports 30.5–31.5 GiB. Compared literally, every machine would
+fail the threshold matching its own label.
+
+**A dimension qualifies at threshold T when the reported value is ≥ 0.95 × T.** The 5%
+allowance covers observed reservation overhead without spanning the gap to the next
+threshold — the smallest step in §2.1 is 8 → 32 GB, far wider than 5%.
+
+This rule applies to memory only. Core counts, VRAM, and disk capacity are reported
+without comparable reservation loss and are compared exactly.
+
+### 2.4 GPU handling
+
+**GPU never gates profile selection at any level**, `high` included. A machine with the
+RAM, cores, and disk for `high` is `high` without a GPU; it simply has F-08…F-10 disabled
+by the matrix. A `mid` machine with a 16 GB GPU gains local coding models (§3, F-08)
+without becoming `high` — it lacks the RAM and cores to sustain `high`'s agent
+concurrency. Profile governs breadth; the matrix governs local inference specifically.
 
 ---
 
@@ -339,8 +354,9 @@ TBD — run the discovery script on the target Linux machine and paste its outpu
 
 | # | Decision | Alternatives | Rationale | Trade-offs | Revisit when |
 |---|---|---|---|---|---|
+| D-101a | Memory compared at 95% of nominal threshold | Compare `MemTotal` literally | A 32 GB machine reports ~31 GiB and would fail its own label; the 5% band is far narrower than the 8→32 GB gap between thresholds | A machine 4% short of a threshold qualifies | Threshold spacing narrows |
 | D-101 | Profile = lowest-scoring qualifying dimension | Highest, or weighted average | The binding constraint determines real capability; an optimistic profile enables components the machine cannot run | A single weak dimension caps an otherwise strong machine | Per-feature gating makes the profile abstraction redundant |
-| D-102 | GPU scored independently of profile | GPU as a profile input | Every GPU-unlocked capability is optional; a GPU-less machine is fully functional against cloud models | Two axes to reason about instead of one | Local inference becomes the primary path rather than a supplement |
+| D-102 | GPU never gates profile selection, `high` included | GPU as an input to the `high` threshold | Every GPU-unlocked capability is optional; a GPU-less machine is fully functional against cloud models | Two axes to reason about instead of one | Local inference becomes the primary path rather than a supplement |
 | D-103 | 2 GB / 2 threads per agent, sized to load not idle | Size to idle footprint | Oversubscription hurts exactly when several agents are busy, which is the case that matters | Under-reports capacity for light workloads | Observed usage on real hardware contradicts it |
 | D-104 | Health score weights RAM 30 / CPU 20 | Equal weights across dimensions | RAM binds agent concurrency at the low end, where most machines sit | Weights are judgment, not measurement | §4.3 core-binding proves more common than expected |
 | D-105 | Health score never reported without its derivation | Report the number, detail on request | A bare score invites trust the derivation may not support; the platform is meant to be diagnostic | Longer report output | — |

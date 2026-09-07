@@ -384,8 +384,9 @@ The repository evolves along four parallel tracks:
 | **Validation** | Per-section validation checks, capability tests, health checks | `validation/` |
 | **Operations** | Runbooks, disaster recovery, maintenance procedures | `docs/operations/` |
 
-Only the specifications pillar exists today. The other three are created as the
-milestones that need them arrive.
+The specifications pillar and the first slices of reference implementation
+(`scripts/discover.sh`) and validation (`validation/test-discovery.sh`) exist today.
+Operations is created when the milestone that needs it arrives.
 
 ### 10.2 Milestones
 

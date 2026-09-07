@@ -6,7 +6,7 @@
 | Status | Draft |
 | Milestone | M1 — Core Architecture |
 | Supersedes | — |
-| Depends on | [001 Vision and Principles](001-Vision-and-Principles.md), [002 Hardware Assessment](002-Hardware-Assessment.md) |
+| Depends on | [001 Vision and Principles](001-Vision-and-Principles.md) (goals, principles), [002 Hardware Assessment](002-Hardware-Assessment.md) (profiles, capability matrix) |
 | Source | Design conversation (retrieved 2026-09-07) — https://chatgpt.com/share/6a9ed0df-2b14-83ea-a725-f8a5824bdb66 |
 
 ---
@@ -49,42 +49,34 @@ the documents named in [§10](#10-repository-structure-and-document-roadmap) and
 
 ## 2. Goals
 
-**G1 — Persistent engineering context.** The platform holds standing context on the
-owner's repositories so that questions like "how is StoryThreads going?" are answered
-from current state, not from a cold start.
+Owned by [001 §Goals](001-Vision-and-Principles.md#goals) and referenced here by ID.
 
-**G2 — Assistant first, autonomous later.** The system begins fully in-the-loop and
-earns autonomy through explicit, reversible gates.
-
-**G3 — Hardware-adaptive.** The platform detects the machine it is on, selects a
-capability profile, and enables only components that machine can actually support.
-
-**G4 — Diagnostic, not just prescriptive.** The platform explains *why* a configuration
-was chosen, what the current hardware permits, and what specific upgrades would unlock —
-with rationale, not just a shopping list.
-
-**G5 — Reproducible from bare metal.** A fresh Ubuntu install reaches a working platform
-via one bootstrap command plus validations.
-
-**G6 — A distribution, not a manual.** The documents describe the platform; the
-repository *is* the platform. Specs and implementation evolve together and never drift.
+| ID | Goal |
+|---|---|
+| G1 | Persistent engineering context |
+| G2 | Assistant first, autonomous later |
+| G3 | Hardware-adaptive |
+| G4 | Diagnostic, not just prescriptive |
+| G5 | Reproducible from bare metal |
+| G6 | A distribution, not a manual |
 
 ---
 
 ## 3. Guiding Principles
 
-Every architectural decision in this platform must satisfy all seven. A decision that
-violates one is recorded in the chapter decision log with an explicit justification.
+Owned by [001 §Guiding Principles](001-Vision-and-Principles.md#guiding-principles) and
+referenced here by ID. Every architectural decision in this document must satisfy all
+seven; a decision that violates one is recorded in §13 with an explicit justification.
 
-| # | Principle | Meaning in practice |
+| ID | Principle | Enforced in this document by |
 |---|---|---|
-| P1 | **Reproducible** | Any state the platform reaches can be re-reached from the repo alone. No undocumented manual steps. |
-| P2 | **Modular** | Components are replaceable in isolation. Removing one degrades scope, never correctness. |
-| P3 | **Observable** | Every agent action emits a trace. Nothing happens that cannot be reconstructed afterward. |
-| P4 | **Secure by default** | Least privilege at rest. Secrets never in the repo. Network surface closed unless opened deliberately. |
-| P5 | **Adaptive** | Behavior derives from detected hardware and declared manifest, not from hardcoded assumptions. |
-| P6 | **Vendor-neutral** | No single model provider or agent CLI is load-bearing. Swapping one is a config change. |
-| P7 | **Automation-first** | If a step is documented as manual, that is a temporary state with a tracked path to automation. |
+| P1 | Reproducible | §10.1 pillars |
+| P2 | Modular | §4.3 layer contracts |
+| P3 | Observable | §8.2 promotion criteria |
+| P4 | Secure by default | §7 role-scoped permissions |
+| P5 | Adaptive | §5.1 Stage 0 gating |
+| P6 | Vendor-neutral | §4.3 orchestrator as sole caller |
+| P7 | Automation-first | §10.1 reference implementation pillar |
 
 ---
 
@@ -196,23 +188,25 @@ Profiles are the vocabulary the rest of the platform uses to talk about capabili
 
 | Profile | Intent |
 |---|---|
+| `minimal` | Below the platform floor. Install refused. |
 | `lightweight` | Single-agent, cloud-model-only operation. No local inference. |
 | `mid` | Several concurrent agents, local embeddings, full memory layer. |
 | `high` | Many concurrent agents plus local coding models on GPU. |
 
-Exact thresholds per profile are set in **002 Hardware Assessment**, which owns the
-capability matrix. This spec owns only the fact that profiles exist, are selected by
+Exact thresholds are set in [002 §2](002-Hardware-Assessment.md#2-hardware-profiles),
+which owns them. This spec owns only the fact that profiles exist, are selected by
 discovery, and gate installation.
 
 ### 5.4 Capability matrix contract
 
-002 must express, for every optional platform feature, the minimum CPU, RAM, GPU/VRAM,
-and disk required, and the profile at which it becomes available. The matrix is the
-data that Stage 0 evaluates. Its shape:
+002 expresses, for every optional platform feature, the minimum CPU, RAM, GPU/VRAM, and
+disk required, and the profile at which it becomes available. The matrix is the data
+Stage 0 evaluates, and a feature absent from it cannot be installed — Stage 0 has no rule
+by which to enable it.
 
-| Feature | Min RAM | Min CPU | GPU | Min profile |
-|---|---|---|---|---|
-| *(one row per feature — populated in 002)* | | | | |
+Populated in [002 §3](002-Hardware-Assessment.md#3-capability-matrix). Concurrent-agent
+capacity is derived rather than tabulated; the formula is
+[002 §4](002-Hardware-Assessment.md#4-concurrent-agent-capacity).
 
 ### 5.5 Upgrade recommendations
 
@@ -223,8 +217,13 @@ Discovery output must explain, not just enumerate. Every recommendation carries:
 - **Rationale** — the concrete capability unlocked. Model the phrasing on: *"32 GB of
   RAM doubles concurrent agent capacity and unlocks local embeddings"*; *"a discrete GPU
   enables local coding models."*
+- **Binding dimension** — which constraint the upgrade lifts, and what binds next.
+  More RAM for a core-bound machine is the failure mode this field prevents.
 - **Feasibility** — whether this machine can physically accept the upgrade, from the
   slot/socket facts in §5.2.
+
+Tier criteria and the standard recommendation set are
+[002 §6](002-Hardware-Assessment.md#6-upgrade-recommendations).
 
 ### 5.6 Discovery report contract
 
@@ -236,7 +235,10 @@ Every discovery run produces:
    it failed, phrased as capability: *"can run four agents concurrently"*, *"local LLMs
    disabled due to RAM."*
 4. **Upgrade recommendations** — tiered, with rationale and feasibility (§5.5).
-5. **Health score** — a single figure with its derivation shown.
+5. **Health score** — a single figure, **never reported without its derivation**.
+   The formula, weights, and bands are owned by
+   [002 §5](002-Hardware-Assessment.md#5-health-score), alongside the matrix it scores
+   against.
 6. **Next steps** — the concrete actions this report implies.
 
 The report is emitted in both human-readable form (pasted into 002) and machine-readable
@@ -309,12 +311,12 @@ gates independently. The platform starts entirely at Gate 0.
 
 | Gate | Name | The platform may… |
 |---|---|---|
-| **G0** | Observe | Read repos, summarize, report. No writes anywhere. |
-| **G1** | Propose | Create branches, run tests, open PRs with explanation, self-review, and stated trade-offs. **Never merges.** |
-| **G2** | Act (low-risk) | Auto-merge PRs meeting an explicit low-risk definition. Monitor production metrics. |
-| **G3** | Act (recoverable) | Propose rollbacks; execute pre-approved recovery actions. |
+| **Gate 0** | Observe | Read repos, summarize, report. No writes anywhere. |
+| **Gate 1** | Propose | Create branches, run tests, open PRs with explanation, self-review, and stated trade-offs. **Never merges.** |
+| **Gate 2** | Act (low-risk) | Auto-merge PRs meeting an explicit low-risk definition. Monitor production metrics. |
+| **Gate 3** | Act (recoverable) | Propose rollbacks; execute pre-approved recovery actions. |
 
-The conversation's own framing of G1 is the binding one: in assistant mode the platform
+The conversation's own framing of Gate 1 is the binding one: in assistant mode the platform
 *"summarizes PRs rather than merging automatically."*
 
 ### 8.2 Promotion criteria
@@ -322,7 +324,7 @@ The conversation's own framing of G1 is the binding one: in assistant mode the p
 A gate advances only when all hold:
 
 1. A defined observation period at the current gate with no unreviewed incidents.
-2. A written low-risk definition (for G2) or recovery-action allowlist (for G3), checked
+2. A written low-risk definition (for Gate 2) or recovery-action allowlist (for Gate 3), checked
    into the repo.
 3. Every action in the class is observable (P3) and reversible.
 4. The manifest records the change (§6.2 `autonomy`), making it a reviewable diff.
@@ -408,8 +410,8 @@ Numbered `NNN-Kebab-Title`, stable from creation so cross-references never break
 
 | ID | Document | Milestone | Status |
 |---|---|---|---|
-| 001 | [Vision and Principles](001-Vision-and-Principles.md) | M0 | Stub |
-| 002 | [Hardware Assessment](002-Hardware-Assessment.md) | M0 | Stub |
+| 001 | [Vision and Principles](001-Vision-and-Principles.md) | M0 | Draft |
+| 002 | [Hardware Assessment](002-Hardware-Assessment.md) | M0 | Draft — matrix complete |
 | 003 | Core Architecture Specification | M1 | **This document** |
 | 004 | Environment Discovery Specification | M1 | Planned |
 | 005 | Orchestrator and Model Routing | M1 | Planned |
